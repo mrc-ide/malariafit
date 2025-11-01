@@ -1,0 +1,79 @@
+---
+title: "Using malariafit to fit malariasimple models with monty and hipercow"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{working_with_monty}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  dpi = 250,
+  fig.width = 7
+)
+```
+
+malariafit can also be used to help facilitate inference using monty and hipercow.
+
+```{r, message = FALSE, results = "hide", fig.align = 'center', out.width='100%', fig.width = 6, fig.height = 4}
+library(malariafit)
+library(malariasimple)
+library(dplyr)
+params <- basic_parameters_site(example_site,
+                                start_date = "2005-01-01",
+                                end_date = "2010-12-31",
+                                prevalence_rendering_min_ages = 0,
+                                prevalence_rendering_max_ages = 5*365) |>
+  set_interventions_site(example_site) |>
+  set_seasonality_site(example_site) |> 
+  malariasimple::set_equilibrium(init_EIR = 50)
+
+output <- malariasimple::run_simulation(params) |> as.data.frame()
+sim_data <- output[1:params$n_days %% 30 == 0,c("time","n_0_1825", "n_detect_0_1825")] #Assume monthly data
+n_tests = 200 #Number of malaria tests given randomly each month
+sim_data <- sim_data %>%
+  mutate(tests = n_tests) %>%
+  mutate(positive = rbinom(n=nrow(sim_data), size = n_tests, prob = n_detect_0_1825 / n_0_1825)) %>%
+  dplyr::select(time, tests, positive)
+plot(sim_data$time, sim_data$positive / sim_data$tests, type = "l", xlab = "Time", ylab = "Under 5 Prevalence")  
+```
+
+```{r, message = FALSE, results = "hide", fig.align = 'center', out.width='100%', fig.width = 6, fig.height = 4}
+library(monty)
+library(dust2)
+gen <- malariasimple::malariasimple_deterministic()
+filter <- dust2::dust_unfilter_create(gen, time_start = 0, data = sim_data, dt = 1/4)
+packer <- monty::monty_packer(
+  scalar = c("init_EIR"),
+  process = function(x) {
+    params <- basic_parameters_site(example_site,
+                                    start_date = "2005-01-01",
+                                    end_date = "2010-12-31",
+                                    prevalence_rendering_min_age = 0,
+                                    prevalence_rendering_max_age = 5*365) |>
+      set_interventions_site(example_site) |>
+      set_seasonality_site(example_site) |> 
+      malariasimple::set_equilibrium(init_EIR = x$init_EIR)
+  }
+)
+likelihood <- dust2::dust_likelihood_monty(filter, packer)
+prior <- monty::monty_dsl({
+  init_EIR ~ Uniform(10, 100)
+})
+vcv <- matrix(1)
+sampler <- monty::monty_sampler_random_walk(vcv = vcv)
+```
+
+If we want to run large/many simulations, you may run out of core in a node. In which case it can be helpful to run chains across multiple nodes. These can be 'stitched' back together using `restitch_array()` to return it to a single array. We can then run some basic MCMC post-processing plots, or convert to formats for use with the `coda` or `bayesplot` packages. 
+
+```{r, message = FALSE, results = "hide", fig.align = 'center', out.width='100%', fig.width = 6, fig.height = 4}
+parameter_samples <- restitch_array(example_samples_list)
+get_traceplot(parameter_samples)
+get_dens_plot(parameter_samples, burn_in = 250)
+```
+
+
+

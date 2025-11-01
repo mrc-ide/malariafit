@@ -1,0 +1,75 @@
+---
+title: "Integration with site-files"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{working-with-site}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  dpi = 250,
+  fig.width = 7
+)
+```
+
+<!-- # ```{r setup} -->
+<!-- # library(site) #See https://mrc-ide.github.io/site/ for info on how to install site and gain access  -->
+<!-- # library(malariafit) -->
+<!-- # ``` -->
+
+A core function of `malariafit` is to convert regional context data from the site-files within the [site](https://mrc-ide.github.io/site/) package into `malariasimple` parameters. This includes data on:
+
+* Historical ITN usage
+* Historical SMC usage
+* Seasonality
+* Population size
+
+### Workflow using site parameters
+`malariafit` contains four functions which mirror the parameter set up functions in `malariasimple`:
+
+* `basic_parameters_site()`
+* `set_interventions_site()`
+* `set_seasonality_site()`
+* `set_equilbrium_site()`
+
+To some extent, all four functions are interchangeable with the equivalent `malariasimple` functions. However, using `basic_parameters_site()` simplifies things when using `set_interventions_site()` as it automatically aligns the dates.
+
+This vignette uses an example site saved within the package. See https://mrc-ide.github.io/site/ for info on how to install `site` and gain access 
+
+
+```{r, message = FALSE, results = "hide", fig.align = 'center', out.width='100%', fig.width = 6, fig.height = 4}
+library(malariafit)
+library(malariasimple)
+
+##---- Create malariasimple parameters according to site object -----
+start_date <- "2010-01-01" #Dates can be either a date object, or character in the format "YYYY-MM-DD"
+end_date <- "2019-12-31"
+params <- basic_parameters_site(site = example_site,
+                                start_date = start_date,
+                                end_date = end_date, #Additional parameters for malariasimple::get_parameters can be added as arguments at the end
+                                clin_inc_rendering_min_ages = 0,
+                                clin_inc_rendering_max_ages = 5*365) |>
+  set_interventions_site(example_site) |>
+  set_seasonality_site(example_site) |>
+  set_equilibrium_site(example_site)
+
+##------------------ Run model and plot -----------------------------
+out <- malariasimple::run_simulation(params) |> as.data.frame()
+dates <- as.Date(as.Date(start_date):as.Date(end_date))
+dates <- dates[format(dates, "%m-%d") != "02-29"] #malariafit assumes 365-day years, so remove leap-days.
+plot(x = dates, y = out$n_clin_inc_0_1825,
+     type = "l", lwd = 2,
+     xlab = "Days", ylab = expression("Clinical Incidence"[0-5]))
+```
+
+`set_interventions_site` will automatically introduce both ITNs and SMC if present. If you would like to just introduce one you can use the functions `set_bednets_site` and `set_smc_site`. We may wish to quickly see what intervention assumptions are going into a simulation. These can be viewed for each site using `plot_interventions()`
+
+```{r, message = FALSE, results = "hide", fig.align = 'center', out.width='100%', fig.width = 6, fig.height = 10}
+plot_interventions(example_site)
+```
+
+

@@ -1,0 +1,12 @@
+.Rhistory
+.Rdata
+.Rproj.user
+.Ruserdata
+*tar.gz
+.Rbuildignore
+.RDataTmp
+inst/doc
+# Ignore large R session files
+.RData*
+.Rhistory
+.Rproj.user/

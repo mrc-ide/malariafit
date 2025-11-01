@@ -1,0 +1,36 @@
+Package: malariafit
+Type: Package
+Title: Fitting malariasimple to data
+Version: 0.1.0
+Authors@R: c(
+  person("Debbie", "Shackleton", email="dshackle@imperial.ac.uk", role = c("aut","cre")))
+Maintainer: Debbie Shackleton <dshackle@imperial.ac.uk>
+Description: Combines the simulation package 'malariasimple', the MCMC inference package 'monty' and the 'site-files' to faciltate smooth cluster-friendly inference with pre- and post- processing. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Remotes: 
+    mrc-ide/dust2,
+    mrc-ide/monty,
+    mrc-ide/malariasimple,
+    mrc-ide/site
+Imports: 
+    dust2,
+    dplyr,
+    monty,
+    malariasimple,
+    ggplot2,
+    deSolve,
+    reshape2,
+    coda,
+    lubridate,
+    abind
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+RoxygenNote: 7.3.2
+VignetteBuilder: knitr
+Depends: 
+    R (>= 2.10)
